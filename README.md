@@ -31,6 +31,20 @@ The intended use for TeLML is as a building-block for specific
 markup formats in which you might want to have arbitrary new
 tags, but don't want to use an XML-based solution.
 
+# Formal Grammar
+
+~~~~
+<document> ::= <fragment>*
+<fragment> ::= <tag> | <text>
+
+<text>     ::= /[^\]|\\[\{}|]*/
+
+<tag>      ::= "\" <tagname> <spaces> "{" <arglist> "}"
+<tagname>  ::= /[A-Za-z][A-Za-z0-9_-]*/
+<arglist>  ::= document ("|" document)*
+<spaces>   ::= /[ \t\r\n]*/
+~~~~
+
 # Possible Future Modifications
 
 Variations on this theme that might be possible:

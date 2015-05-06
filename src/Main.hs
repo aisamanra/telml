@@ -4,19 +4,23 @@ module Main where
 
 import           Data.Aeson (Value(..), encode, object, (.=))
 import qualified Data.ByteString.Lazy.Char8 as BS
-import           Data.Maybe (fromJust)
 import           Data.TeLML
 import           Data.Vector (fromList)
 import qualified Data.Text as T
-import qualified Data.Text.IO as T
 
 telmlToValue :: Fragment -> Value
-telmlToValue (Chunk t)  = String t
+telmlToValue (Text t)  = String (T.pack t)
 telmlToValue (Tag t ts) = object
-  [ "name"     .= String t
-  , "contents" .= Array (fromList (map telmlToValue ts))
+  [ "name"     .= String (T.pack t)
+  , "contents" .= arr (map (arr . map telmlToValue) ts)
   ]
+  where arr = Array . fromList
+
+fromRight (Right x) = x
+fromRight _ = undefined
 
 main = do
-  contents <- T.getContents
-  BS.putStrLn . encode . map telmlToValue . fromJust . parse $ contents
+  r <- fmap parse getContents
+  case r of
+    Right x  -> BS.putStrLn . encode . map telmlToValue $ x
+    Left err -> putStrLn err

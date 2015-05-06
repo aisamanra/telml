@@ -11,8 +11,19 @@ fragments interspersed with "tags", which have the format
 
 Whitespace is _not_ allowed between the backslash and the tag
 name, but _is_ allowed between the tag name and the following
-block. In contrast to LaTeX, the block is _obligatory_, i.e.
-the following is not a valid document:
+block. This means that the following is allowed:
+
+~~~~
+\tag
+  { element_1
+  | element_2
+  | ...
+  | element_n
+  }
+~~~~
+
+In contrast to TeX, the block is _obligatory_, i.e.
+the following is **not** a valid document:
 
 ~~~~
 \p{this \br and that}

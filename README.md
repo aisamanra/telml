@@ -1,7 +1,8 @@
 # TeLML
 
 A Tex-Like Markup Language—which is a bit of a misnomer, because
-as presented, it's more of a structured data language than a
+as presented, it's more of a structured data language optimized for
+text documents than an actual
 markup language. A _TeLML Document_ is a sequence of textual
 fragments interspersed with "tags", which have the format
 

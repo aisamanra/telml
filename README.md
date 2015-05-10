@@ -2,8 +2,12 @@
 
 A Tex-Like Markup Language—which is a bit of a misnomer, because
 as presented, it's more of a structured data language optimized for
-text documents than an actual
-markup language. A _TeLML Document_ is a sequence of textual
+text documents than an actual markup language. A markup-oriented
+use of this library can be found in the
+[`telml-markup`](https://github.com/aisamanra/telml-markup)
+package.
+
+A _TeLML Document_ is a sequence of textual
 fragments interspersed with "tags", which have the format
 
 ~~~~

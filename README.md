@@ -53,7 +53,7 @@ tags, but don't want to use an XML-based solution.
 <document> ::= <fragment>*
 <fragment> ::= <tag> | <text> | "{" <document> "}"
 
-<text>     ::= /[^\]|[\][\{}|]*/
+<text>     ::= /([^\]|[\][\{}|])*/
 
 <tag>      ::= "\" <tagname> <spaces> "{" <arglist> "}"
 <tagname>  ::= /[A-Za-z][A-Za-z0-9_-]*/

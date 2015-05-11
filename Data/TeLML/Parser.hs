@@ -54,13 +54,13 @@ pText = over Text . go
 pTagName :: Parse String
 pTagName s = go s `bind` ensureLen
   where go i@(x:xs)
-          | isAlpha x   = (x:) `over` pTagName xs
-          | elem x "-_" = (x:) `over` pTagName xs
+          | isAlpha x   = (x:) `over` go xs
+          | elem x "-_" = (x:) `over` go xs
           | otherwise   = return (i, "")
         go [] = throw "unexpected end-of-document while parsing tag"
         ensureLen (xs, name)
           | length name > 0 = return (xs, name)
-          | otherwise       = throw "expected tag name after `\\'"
+          | otherwise       = throw $ "expected tag name after `\\': " ++ show (name, xs)
 
 -- Skip any space charaters, returning () for the first non-space
 -- character (including EOF).

@@ -2,7 +2,7 @@
 
 module Data.TeLML.Parser (Fragment(..), Document, parse) where
 
-import Data.Char (isAlpha, isSpace)
+import Data.Char (isAlpha, isAlphaNum, isSpace)
 import Data.TeLML.Type
 
 type Result a = Either String (String, a)
@@ -52,15 +52,18 @@ pText = over Text . go
 
 -- Parse a tag name of length >= 0.
 pTagName :: Parse String
-pTagName s = go s `bind` ensureLen
+pTagName s = go s `bind` ensureName
   where go i@(x:xs)
-          | isAlpha x   = (x:) `over` go xs
-          | elem x "-_" = (x:) `over` go xs
-          | otherwise   = return (i, "")
+          | isAlphaNum x = (x:) `over` go xs
+          | elem x "-_"  = (x:) `over` go xs
+          | otherwise    = return (i, "")
         go [] = throw "unexpected end-of-document while parsing tag"
-        ensureLen (xs, name)
-          | length name > 0 = return (xs, name)
-          | otherwise       = throw $ "expected tag name after `\\': " ++ show (name, xs)
+        ensureName (xs, name)
+          | length name == 0 =
+              throw "expected tag name after `\\'"
+          | not (isAlpha (head name)) =
+              throw "tag names must begin with an alphabetic character"
+          | otherwise = return (xs, name)
 
 -- Skip any space charaters, returning () for the first non-space
 -- character (including EOF).

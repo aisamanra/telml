@@ -32,21 +32,28 @@ pText = over Text . go
         go "" = return ("", "")
 
 pTagName :: Parse String
-pTagName i@(x:xs)
-  | isAlpha x   = (x:) `over` pTagName xs
-  | elem x "-_" = (x:) `over` pTagName xs
-  | otherwise   = return (i, "")
+pTagName s = go s `bind` ensureLen
+  where go i@(x:xs)
+          | isAlpha x   = (x:) `over` pTagName xs
+          | elem x "-_" = (x:) `over` pTagName xs
+          | otherwise   = return (i, "")
+        go [] = throw "unexpected end-of-document while parsing tag"
+        ensureLen (xs, name)
+          | length name > 0 = return (xs, name)
+          | otherwise       = throw "expected tag name after `\\'"
 
 skipSpace :: Parse ()
 skipSpace i@(x:xs)
   | isSpace x = skipSpace xs
   | otherwise = return (i, ())
+skipSpace _ = return ("", ())
 
 pTag :: Parse Fragment
 pTag i =
   bind (pTagName i) $ \ (i', name) ->
     bind (skipSpace i') $ \case
       ('{':i'', ()) -> Tag name `over` pArgs i''
+      ("",_)        -> throw "unexpected end-of-document while parsing tag"
       _             -> throw "expected start of block"
 
 pArgs :: Parse [Document]
@@ -64,6 +71,10 @@ pFragment s         = pText s
 
 pFragments :: Parse Document
 pFragments "" = return ("", [])
+pFragments ('{':s) = bind (pFragments s) $ \case
+  ('}':xs, cs) -> bind (pFragments xs) $ \(xs', cs') -> return (xs', cs ++ cs')
+  (x:_,    _)  -> throw ("unexpected " ++ show x ++ "; expected '}'")
+  ([],     _)  -> throw ("unexpected end-of-document while parsing block")
 pFragments s@(x:_)
   | x `elem` "}|" = return (s, [])
   | otherwise     =
@@ -71,7 +82,8 @@ pFragments s@(x:_)
        (s', c) -> (c:) `over` pFragments s'
 
 parse :: String -> Either String Document
-parse s = case pFragments s of
-  Right ("", r) -> return r
-  Right (s, _)  -> throw ("expected end of document but found " ++ show s)
-  Left err      -> throw err
+parse str = case pFragments str of
+  Right ("", r)     -> return r
+  Right ('}':_, _)  -> throw ("Found unmatched '}' in document")
+  Right (s, _)      -> throw ("expected end of document but found " ++ show s)
+  Left err          -> throw err

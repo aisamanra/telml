@@ -51,7 +51,7 @@ tags, but don't want to use an XML-based solution.
 
 ~~~~
 <document> ::= <fragment>*
-<fragment> ::= <tag> | <text>
+<fragment> ::= <tag> | <text> | "{" <document> "}"
 
 <text>     ::= /[^\]|\\[\{}|]*/
 

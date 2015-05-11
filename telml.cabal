@@ -13,6 +13,7 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:     Data.TeLML
+  ghc-options:         -Wall
   other-modules:       Data.TeLML.Parser, Data.TeLML.Type
   build-depends:       base >=4.7 && <4.9,
                        deepseq >=1.4 && <2

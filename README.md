@@ -1,76 +1,13 @@
-# TeLML
+# telml
 
-A Tex-Like Markup Language—which is a bit of a misnomer, because
-as presented, it's more of a structured data language optimized for
-text documents than an actual markup language. A markup-oriented
-use of this library can be found in the
+This is the repository for both the `telml` and the `telml-markup`
+packages. The former implements a TeX-inspired data format, while
+the latter uses that data format to implement a lightweight,
+extensible markup format.
+
+This repository contains a
+[cabal.project file](http://blog.ezyang.com/2016/05/announcing-cabal-new-build-nix-style-local-builds/), which facilitates building multiple packages together;
+this repository had previously been used for just the `telml` package,
+and the corresponding
 [`telml-markup`](https://github.com/aisamanra/telml-markup)
-package.
-
-A _TeLML Document_ is a sequence of textual
-fragments interspersed with "tags", which have the format
-
-~~~~
-\tagname{ document | document | ... }
-~~~~
-
-Whitespace is _not_ allowed between the backslash and the tag
-name, but _is_ allowed between the tag name and the following
-block. This means that the following is allowed:
-
-~~~~
-\tag
-  { element_1
-  | element_2
-  | ...
-  | element_n
-  }
-~~~~
-
-In contrast to TeX, the block is _obligatory_, i.e.
-the following is **not** a valid document:
-
-~~~~
-\p{this \br and that}
-~~~~
-
-Whereas this is:
-
-~~~~
-\p{this \br{} and that}
-~~~~
-
-(This restriction might at some point be lifted based on experience
-with the format.)
-
-The intended use for TeLML is as a building-block for specific
-markup formats in which you might want to have arbitrary new
-tags, but don't want to use an XML-based solution.
-
-# Formal Grammar
-
-~~~~
-<document> ::= <fragment>*
-<fragment> ::= <tag> | <text> | "{" <document> "}"
-
-<text>     ::= /([^\]|[\][\{}|])*/
-
-<tag>      ::= "\" <tagname> <spaces> "{" <arglist> "}"
-<tagname>  ::= /[A-Za-z][A-Za-z0-9_-]*/
-<arglist>  ::= <document> ("|" <document>)*
-<spaces>   ::= /[ \t\r\n]*/
-~~~~
-
-# Possible Future Modifications
-
-Variations on this theme that might be possible:
-
-- It might (as stated above) be worthwhile to attempt to lift the
-  restriction that every tag has an argument block, if nullary
-  tags are commonly used.
-- It might be nice to optionally allow `\begin{...}` and `\end{...}`
-  tags to be parsed as a special case of certain delimiters.
-- Maybe a special case for named arguments of the form
-  `\tag{arg=stuff|arg=stuff}`, although this could be
-  handled at present by using nested tags as in
-  `\tag{\arg{stuff}|\arg{stuff}}`.
+repository is left but will not be updated.

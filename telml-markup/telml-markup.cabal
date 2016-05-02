@@ -1,0 +1,30 @@
+Name:                   telml-markup
+Version:                0.0.0
+Author:                 Getty Ritter <gettylefou@gmail.com>
+Maintainer:             Getty Ritter <gettylefou@gmail.com>
+License:                BSD3
+License-File:           LICENSE
+-- Synopsis:               
+-- Description:            
+Cabal-Version:          >= 1.10
+Build-Type:             Simple
+Extra-Source-Files:     README.md, ChangeLog.md
+
+Library
+  Default-Language:     Haskell2010
+  GHC-Options:          -Wall
+  Exposed-Modules:      Data.TeLML.Markup
+  Build-Depends:        base >= 4 && < 5, telml, blaze-markup, blaze-html, mtl
+
+-- Test-Suite spec
+--   Type:                 exitcode-stdio-1.0
+--   Default-Language:     Haskell2010
+--   Hs-Source-Dirs:       test
+--   Ghc-Options:          -Wall
+--   Main-Is:              Spec.hs
+--   Build-Depends:        base
+--                       , hspec
+
+Source-Repository head
+  Type:                 git
+--  Location:

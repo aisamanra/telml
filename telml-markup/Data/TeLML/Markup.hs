@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Data.TeLML.Markup where
 
@@ -6,7 +7,9 @@ import Control.Monad (void)
 import Data.TeLML
 import Text.Blaze.Html
 import Text.Blaze.Html5 hiding (map, head, html)
-import Text.Blaze.Html5.Attributes hiding (name)
+import Text.Blaze.Html5.Attributes hiding (name, span)
+
+import Prelude hiding (div, span)
 
 -- | Render a TeLML document with an extra set of possible tags.
 renderWith :: [(String, Renderer)] -> Document -> Either String Html
@@ -46,25 +49,46 @@ type Renderer = (Fragment -> HtmlE, [Document]) -> HtmlE
 -- The built-in set of tags (subject to change)
 basicTags :: [(String, Renderer)]
 basicTags =
-  [ ("em"
-    , \case (f,[rs]) -> fmap (em . sequence_) (mapM f rs)
-            _        -> Left "wrong arity for em/1"
-    )
-  , ("strong"
-    , \case (f,[rs]) -> fmap (strong . sequence_) (mapM f rs)
-            _        -> Left "wrong arity for strong/1"
-    )
-  , ("code"
-    , \case (f,[rs]) -> fmap (code . sequence_) (mapM f rs)
-            _        -> Left "wrong arity for code/1"
-    )
+  [ simpleTag "em" em
+  , simpleTag "strong" strong
+  , simpleTag "li" li
+  , simpleTag "h1" h1
+  , simpleTag "h2" h2
+  , simpleTag "p" (\ rs -> span ! class_ "para" $ rs)
+  , simpleTag "blockquote" blockquote
+  , simpleTag "tt" code
+  , simpleTag "code" (pre . code)
+  , simpleTag "ttcom" (\ rs -> span ! class_ "comment" $ rs)
+  , simpleTag "ttkw"  (\ rs -> span ! class_ "keyword" $ rs)
+  , simpleTag "ttcn"  (\ rs -> span ! class_ "constr" $ rs)
+  , simpleTag "ttstr" (\ rs -> span ! class_ "string" $ rs)
+  , listTag "ul" ul
+  , listTag "ol" ol
+  , listTag "center" (\ rs -> div ! class_ "center" $ rs)
+  , ("br", \_ -> return br)
+  , ("comment", \_ -> return "")
   , ("link"
     , \case (f,[[Text l],r]) -> let go h = a ! href (stringValue l) $ h
                                 in fmap (go . sequence_) (mapM f r)
             (_,[_,_])        -> Left "link target should be string"
             _                -> Left "wrong arity for link/1"
     )
+  , ("img"
+    , \case (_, [[Text l]]) -> return (img ! src (stringValue l))
+            (_,[_])         -> Left "image target should be string"
+            _               -> Left "wrong arity for img/1"
+    )
   ]
+  where simpleTag :: String -> (Html -> Html) -> (String, Renderer)
+        simpleTag name tag =
+          ( name
+          , \case (f,[rs]) -> fmap (tag . sequence_) (mapM f rs)
+                  _        -> Left ("wrong arity for " ++ name ++ "/1")
+          )
+        listTag name tag =
+          ( name
+          , \case (f,rs) -> fmap (tag . sequence_) (mapM f (concat rs))
+          )
 
 -- render a single paragraph
 renderPara :: [(String, Renderer)] -> Document -> Either String Html

@@ -2,10 +2,12 @@ name:                   telml-markup
 version:                0.1.0.0
 author:                 Getty Ritter <gettylefou@gmail.com>
 maintainer:             Getty Ritter <gettylefou@gmail.com>
+copyright:              ©2015 Getty Ritter
+category:               Data
 license:                BSD3
 license-file:           LICENSE
--- Synopsis:               
--- Description:            
+synopsis:               A simple, extensible, TeX-like markup language.
+description:            A simple, extensible, TeX-like markup language.
 cabal-version:          >= 1.10
 build-type:             Simple
 extra-source-files:     README.md, ChangeLog.md

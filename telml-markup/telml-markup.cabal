@@ -33,4 +33,4 @@ test-suite spec
 
 source-repository head
   type:     git
-  location: https://github.com/aisamanra/telml-markup
+  location: https://github.com/aisamanra/telml

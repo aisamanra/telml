@@ -52,29 +52,38 @@ radically if I decide I want the semantics of tags to change.
 
 ## Frequently Asked Questions
 
+Nobody has asked me these, but I assume that if someone wanted to ask
+me questions, they would probably be some of these.
+
 ### Why?
 
 It's my party, and I'll bikeshed if I want to.
 
-### Why Not Markdown?
+### Why not Markdown?
 
 Markdown isn't easily extensible, and also it's fraught with
 edge-cases and difficult to implement in a new language. TeLML is
 extensible, and it's easy to write a naïve recursive descent parser
 for it in basically any language.
 
-### Why Not XML?
+### Why not XML?
 
 I know XML is eXtensible, after all, but—do _you_ want to write XML by
 hand? Because _I_ don't. Yeah, `\em{foo}` is more heavyweight than
 Markdown's `_foo_`, but it's also a fair bit more lightweight than
 XML's `<em>foo</em>`.
 
-### Why Not ReST?
+### Why not ReStructured Text?
 
 Because I didn't know about its extensibility when I started writing
 TeLML, and now this exists and I use it and I don't really want to
 switch.
+
+### Are there other language implementations?
+
+I have less-polished Scheme and Rust implementations that I haven't
+put online yet. I'm planning on using the Rust implementation for a
+project at some point, so it might show up before too long.
 
 ### Why is your code so bad?
 

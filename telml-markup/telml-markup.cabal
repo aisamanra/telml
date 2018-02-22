@@ -20,18 +20,22 @@ library
                         telml,
                         blaze-markup,
                         blaze-html,
-                        mtl
+                        mtl,
+                        text
 
 test-suite spec
+  default-language: Haskell2010
   type:            exitcode-stdio-1.0
   ghc-options:     -Wall
   hs-source-dirs:  test
   main-is:         Spec.hs
+  other-modules:   Telml.MarkupSpec
   build-depends:     base    == 4.*
                    , telml
                    , telml-markup
                    , hspec   == 2.*
                    , blaze-markup
+  build-tools: hspec-discover
 
 source-repository head
   type:     git

@@ -1,9 +1,11 @@
 {-# LANGUAGE LambdaCase #-}
 
-module Data.TeLML.Parser (Fragment(..), Document, parse) where
+module Data.TeLML.Parser (Fragment(..), Tag(..), Document, parse) where
 
 import Data.Char (isAlpha, isAlphaNum, isSpace)
 import Data.TeLML.Type
+
+import qualified Data.Text as T
 
 type Result a = Either String (String, a)
 type Parse a = String -> Result a
@@ -42,7 +44,7 @@ bind (Right a)  f = f a
 -- Parse a text fragment, handling escapes. This will end as soon as it
 -- sees any non-escaped special character.
 pText :: Parse Fragment
-pText = over Text . go
+pText = over (TextFrag . T.pack) . go
   where go ('\\':x:xs)
           | isSpecial x = (x:) `over` go xs
         go i@(x:xs)
@@ -78,7 +80,7 @@ pTag :: Parse Fragment
 pTag i =
   bind (pTagName i) $ \ (i', name) ->
     bind (skipSpace i') $ \case
-      ('{':i'', ()) -> Tag name `over` pArgs i''
+      ('{':i'', ()) -> TagFrag `over` (Tag (T.pack name) `over` pArgs i'')
       ("",_)        -> throw "unexpected end-of-document while parsing tag"
       _             -> throw "expected start of block"
 

@@ -1,3 +1,3 @@
-module Data.TeLML(parse, Document, Fragment(..)) where
+module Data.TeLML(parse, Document, Fragment(..), Tag(..)) where
 
 import Data.TeLML.Parser

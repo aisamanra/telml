@@ -22,6 +22,6 @@ spec = do
       doRender "\\em{foo}" `shouldBe` Right "<p><em>foo</em></p>"
     it "should embolden" $ do
       doRender "\\strong{foo}" `shouldBe` Right "<p><strong>foo</strong></p>"
-    it "should lis" $ do
+    it "should list" $ do
       doRender "\\ul{\\li{one}\\li{two}}" `shouldBe`
         Right "<p><ul><li>one</li><li>two</li></ul></p>"

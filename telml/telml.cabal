@@ -16,7 +16,8 @@ library
   ghc-options:         -Wall
   other-modules:       Data.TeLML.Parser, Data.TeLML.Type
   build-depends:       base >=4.7 && <5,
-                       deepseq >=1.4 && <2
+                       deepseq >=1.4 && <2,
+                       text
   default-language:    Haskell2010
 
 source-repository head

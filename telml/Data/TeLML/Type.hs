@@ -1,11 +1,12 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 
-module Data.TeLML.Type (Document, Fragment(..)) where
+module Data.TeLML.Type (Document, Fragment(..), Tag(..)) where
 
-import Control.DeepSeq (NFData(..))
-import Data.Data (Data)
-import Data.Typeable (Typeable)
-import Data.String (IsString(..))
+import           Control.DeepSeq (NFData(..))
+import           Data.Data (Data)
+import qualified Data.Text as T
+import           Data.Typeable (Typeable)
+import           Data.String (IsString(..))
 
 -- | A 'Document' is zero or more 'Fragment's.
 type Document = [Fragment]
@@ -15,13 +16,21 @@ type Document = [Fragment]
 --   constructor). The former is a raw string, and the latter consists
 --   of a name followed by zero or more 'Document's.
 data Fragment
-  = Text String
-  | Tag String [Document]
+  = TextFrag T.Text
+  | TagFrag Tag
     deriving (Eq, Show, Typeable, Data)
 
+data Tag = Tag
+  { tagName    :: T.Text
+  , tagPayload :: [Document]
+  } deriving (Eq, Show, Typeable, Data)
+
 instance IsString Fragment where
-  fromString = Text
+  fromString = TextFrag . fromString
 
 instance NFData Fragment where
-  rnf (Text s)  = rnf s
-  rnf (Tag s l) = rnf s `seq` rnf l
+  rnf (TextFrag s)  = rnf s
+  rnf (TagFrag t) = rnf t
+
+instance NFData Tag where
+  rnf (Tag n l) = rnf n `seq` rnf l

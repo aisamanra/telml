@@ -14,6 +14,8 @@ module Data.TeLML.Parse
   , both
   ) where
 
+import qualified Data.Text as T
+
 import Data.TeLML
 
 newtype Parse t a = Parse { runParse :: t -> Either String a }
@@ -39,19 +41,19 @@ instance Monad (Parse t) where
       Left err -> Left err
       Right v -> runParse (f v) s
 
-select :: String -> Parse [Document] t -> Parse Document [t]
+select :: T.Text -> Parse [Document] t -> Parse Document [t]
 select name content = Parse $ \ s -> each s
   where
     each [] = return []
-    each (Tag t doc:xs)
+    each (TagFrag (Tag t doc):xs)
       | t == name = (:) <$> runParse content doc <*> each xs
     each (_:xs) = each xs
 
-field :: String -> (Parse [Document] t) -> Parse Document t
+field :: T.Text -> (Parse [Document] t) -> Parse Document t
 field name content = Parse $ \ s -> find s
   where
-    find [] = Left ("Unable to find tag \\" ++ name)
-    find (Tag t doc:_)
+    find [] = Left ("Unable to find tag \\" ++ T.unpack name)
+    find (TagFrag (Tag t doc):_)
       | t == name = runParse content doc
     find (_:xs) = find xs
 
@@ -68,10 +70,10 @@ both l r = Parse $ \ s ->
     [a, b] -> (,) <$> runParse l a <*> runParse r b
     _ -> Left ("Wrong arity for `both`: " ++ show (length s))
 
-text :: Parse Document String
-text = Parse (\ s -> concat <$> traverse go s)
-  where go (Text str) = Right str
-        go (Tag t _)  = Left ("Expected Text fragment, found \\" ++ show t)
+text :: Parse Document T.Text
+text = Parse (\ s -> T.concat <$> traverse go s)
+  where go (TextFrag str) = Right str
+        go (TagFrag (Tag t _)) = Left ("Expected Text fragment, found \\" ++ T.unpack t)
 
 document :: Parse Document Document
 document = Parse (\ s -> Right s)

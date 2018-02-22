@@ -1,1 +1,4 @@
-packages: telml/telml.cabal, telml-markup/telml-markup.cabal
+packages:
+  telml/telml.cabal,
+  telml-parse/telml-parse.cabal,
+  telml-markup/telml-markup.cabal

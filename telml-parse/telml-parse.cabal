@@ -1,4 +1,4 @@
-name:                telml
+name:                telml-parse
 version:             0.1.0.0
 synopsis:            A lightweight TeX-like markup format.
 description:         A lightweight TeX-like markup format.
@@ -6,17 +6,16 @@ license:             BSD3
 license-file:        LICENSE
 author:              Getty Ritter <gettylefou@gmail.com>
 maintainer:          Getty Ritter <gettylefou@gmail.com>
-copyright:           ©2015 Getty Ritter
+copyright:           ©2018 Getty Ritter
 category:            Data
 build-type:          Simple
 cabal-version:       >=1.10
 
 library
-  exposed-modules:     Data.TeLML
+  exposed-modules:     Data.TeLML.Parse
   ghc-options:         -Wall
-  other-modules:       Data.TeLML.Parser, Data.TeLML.Type
   build-depends:       base >=4.7 && <5,
-                       deepseq >=1.4 && <2
+                       telml ==0.1.0.0
   default-language:    Haskell2010
 
 source-repository head

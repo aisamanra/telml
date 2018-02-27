@@ -12,6 +12,16 @@ cabal-version:          >= 1.10
 build-type:             Simple
 extra-source-files:     README.md, ChangeLog.md
 
+executable telml2html
+  default-language: Haskell2010
+  ghc-options: -Wall
+  hs-source-dirs: telml2html
+  main-is: Main.hs
+  build-depends: base
+               , telml
+               , telml-markup
+               , blaze-markup
+
 library
   default-language:     Haskell2010
   ghc-options:          -Wall

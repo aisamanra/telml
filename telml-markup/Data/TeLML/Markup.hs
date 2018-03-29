@@ -1,10 +1,8 @@
-{-# LANGUAGE LambdaCase #-}
-{-# LANGUAGE GADTs #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ExistentialQuantification #-}
-{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module Data.TeLML.Markup where
 
@@ -94,31 +92,17 @@ data TagDescription = forall t. TagArguments t => TagDescription
 
 -- | The 'Str' newtype will match a literal chunk of non-formatted,
 -- non-structured text.
-newtype Str = Str { fromStr :: T.Text } deriving (Eq, Show)
+newtype Str = Str { fromStr :: T.Text }
 
 -- | The 'H' newtype will match a single, pre-rendered argument
-newtype H = H Html
+newtype H = H { fromHtml :: Html }
 
 -- | The 'Hs' newtype will match a concatenated set of pre-rendered
 -- arguments
-newtype Hs = Hs Html
+newtype Hs = Hs { fromHtmlList :: Html }
 
 mkTag :: TagArguments t => T.Text -> t -> TagDescription
 mkTag = TagDescription
-
-exec :: T.Text -> [Document] -> [TagDescription] -> Either String Html
-exec name args (TagDescription tag func:_)
-  | name == tag = case taExec func args undefined of
-      Nothing -> Left $ unwords [ "Tag"
-                                , T.unpack ('\\' `T.cons` name)
-                                , "expects argument structure"
-                                , T.unpack ('\\' `T.cons` name `T.append`
-                                            T.intercalate "|" (toType func))
-                                ]
-      Just x -> x
-exec name args (_:rs) = exec name args rs
-exec name args [] = Left $
-  "Error: no match for tag " ++ T.unpack name ++ "/" ++ show (length args)
 
 -- The built-in set of tags (subject to change)
 basicTags :: [TagDescription]
@@ -150,7 +134,7 @@ basicTags =
   ]
 
 simpleTag :: T.Text -> (Markup -> Html) -> TagDescription
-simpleTag name tag = mkTag name (\ (H h) -> tag h)
+simpleTag name tag = mkTag name (tag . fromHtml)
 
 listTag :: T.Text -> (Markup -> Html) -> TagDescription
 listTag name tag = mkTag name (\ (Hs hs) -> tag hs)
@@ -160,3 +144,16 @@ renderPara :: [TagDescription] -> Document -> Either String Html
 renderPara taglist ds = fmap (p . sequence_) (mapM go ds)
   where go (TextFrag ts) = Right (toMarkup ts)
         go (TagFrag (Tag tx rs)) = exec tx rs taglist
+        exec name args (TagDescription tag func:_)
+          | name == tag = case taExec func args go of
+              Nothing -> Left $ unwords
+                [ "Tag"
+                , T.unpack ('\\' `T.cons` name)
+                , "expects argument structure"
+                , T.unpack ('\\' `T.cons` name `T.append`
+                             T.intercalate "|" (toType func))
+                ]
+              Just x -> x
+        exec name args (_:rs) = exec name args rs
+        exec name args [] = Left $
+          "Error: no match for tag " ++ T.unpack name ++ "/" ++ show (length args)

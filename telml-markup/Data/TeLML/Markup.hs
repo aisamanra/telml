@@ -1,4 +1,7 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Data.TeLML.Markup where
@@ -13,7 +16,7 @@ import Text.Blaze.Html5.Attributes hiding (name, span)
 import Prelude hiding (div, span)
 
 -- | Render a TeLML document with an extra set of possible tags.
-renderWith :: [(T.Text, Renderer)] -> Document -> Either String Html
+renderWith :: [TagDescription] -> Document -> Either String Html
 renderWith rs =
   fmap (void . sequence) . mapM (renderPara (basicTags ++ rs)) . gatherPara
 
@@ -44,8 +47,61 @@ type HtmlE = Either String Html
 
 type Renderer = (Fragment -> HtmlE, [Document]) -> HtmlE
 
+infixr 5 :=>
+data a :=> b = a :=> b deriving (Eq, Show)
+
+data Args t where
+  EndArg      ::              Args ()
+  ListArg     ::              Args [Document]
+  FragmentArg :: Args rest -> Args (Document :=> rest)
+  TextArg     :: Args rest -> Args (T.Text :=> rest)
+
+matchArguments :: Args t -> [Document] -> Maybe t
+matchArguments EndArg [] = return ()
+matchArguments EndArg _  = Nothing
+matchArguments ListArg ds = return ds
+matchArguments (FragmentArg rs) (d:ds) =
+  (d :=>) `fmap` matchArguments rs ds
+matchArguments (FragmentArg EndArg) [] = return ([TextFrag ""] :=> ())
+matchArguments (FragmentArg _) [] = Nothing
+matchArguments (TextArg rs) ([TextFrag t]:ds) =
+  (t :=>) `fmap` matchArguments rs ds
+matchArguments (TextArg _) _ = Nothing
+
+argType :: Args t -> T.Text
+argType t = "{" `T.append` T.intercalate "|" (toType t) `T.append` "}"
+  where
+    toType :: Args t -> [T.Text]
+    toType EndArg = []
+    toType ListArg = ["..."]
+    toType (FragmentArg rs) = "_" : toType rs
+    toType (TextArg rs) = "string" : toType rs
+
+data TagDescription = forall t. TagDescription
+  { tdName   :: T.Text
+  , tdArgs   :: Args t
+  , tdAction :: t -> (Fragment -> HtmlE) -> HtmlE
+  }
+
+simpleTag :: T.Text -> (Markup -> Html) -> TagDescription
+simpleTag name tag = TagDescription
+  { tdName = name
+  , tdArgs = FragmentArg EndArg
+  , tdAction = \ (fragment :=> ()) f ->
+    fmap (tag . sequence_) (mapM f fragment)
+  }
+
+listTag :: T.Text -> (Markup -> Html) -> TagDescription
+listTag name tag = TagDescription
+  { tdName = name
+  , tdArgs = ListArg
+  , tdAction = \ rs f ->
+    fmap (tag . sequence_) (mapM f (concat rs))
+  }
+
+
 -- The built-in set of tags (subject to change)
-basicTags :: [(T.Text, Renderer)]
+basicTags :: [TagDescription]
 basicTags =
   [ simpleTag "em" em
   , simpleTag "strong" strong
@@ -60,43 +116,33 @@ basicTags =
   , simpleTag "ttkw"  (\ rs -> span ! class_ "keyword" $ rs)
   , simpleTag "ttcn"  (\ rs -> span ! class_ "constr" $ rs)
   , simpleTag "ttstr" (\ rs -> span ! class_ "string" $ rs)
+
   , listTag "ul" ul
   , listTag "ol" ol
   , listTag "center" (\ rs -> div ! class_ "center" $ rs)
-  , ("br", \_ -> return br)
-  , ("comment", \_ -> return "")
-  , ("link"
-    , \case (f,[[TextFrag l],r]) -> let go h = a ! href (toValue l) $ h
-                                in fmap (go . sequence_) (mapM f r)
-            (_,[_,_])        -> Left "link target should be string"
-            _                -> Left "wrong arity for link/1"
-    )
-  , ("img"
-    , \case (_, [[TextFrag l]]) -> return (img ! src (toValue l))
-            (_,[_])         -> Left "image target should be string"
-            _               -> Left "wrong arity for img/1"
-    )
+
+  , TagDescription "br" EndArg (\ () _ -> return br)
+  , TagDescription "comment" ListArg (\ _ _ -> return "")
+  , TagDescription "link" (TextArg (FragmentArg EndArg)) $ \ (l :=> r :=> ()) f ->
+      let go h = a ! href (toValue l) $ h
+      in fmap (go . sequence_) (mapM f r)
+  , TagDescription "img" (TextArg (TextArg EndArg)) $ \ (l :=> r :=> ()) _ ->
+      return (img ! src (toValue l) ! alt (toValue r))
   ]
-  where simpleTag :: T.Text -> (Html -> Html) -> (T.Text, Renderer)
-        simpleTag name tag =
-          ( name
-          , \case (f,[rs]) -> fmap (tag . sequence_) (mapM f rs)
-                  _        -> Left ("wrong arity for " ++ T.unpack name ++ "/1")
-          )
-        listTag name tag =
-          ( name
-          , \case (f,rs) -> fmap (tag . sequence_) (mapM f (concat rs))
-          )
 
 -- render a single paragraph
-renderPara :: [(T.Text, Renderer)] -> Document -> Either String Html
+renderPara :: [TagDescription] -> Document -> Either String Html
 renderPara taglist ds = fmap (p . sequence_) (mapM go ds)
   where go (TextFrag ts) = Right (toMarkup ts)
         go (TagFrag (Tag tx rs)) = exec tx rs taglist
-        exec name args ((tag, func):tags)
-          | name == tag = case func (go, args) of
-            Right html -> Right html
-            Left {}    -> exec name args tags
+        exec name args (TagDescription tag rg func:_)
+          | name == tag = case matchArguments rg args of
+              Nothing -> Left $ unwords [ "Tag"
+                                        , T.unpack ('\\' `T.cons` name)
+                                        , "expects argument structure"
+                                        , T.unpack ('\\' `T.cons` name `T.append` argType rg)
+                                        ]
+              Just x -> func x go
         exec name args (_:tags) = exec name args tags
         exec name args [] = Left $
           "Error: no match for tag " ++ T.unpack name ++ "/" ++ show (length args)

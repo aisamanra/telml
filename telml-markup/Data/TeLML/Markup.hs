@@ -1,8 +1,10 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 module Data.TeLML.Markup where
 
@@ -49,6 +51,68 @@ type Renderer = (Fragment -> HtmlE, [Document]) -> HtmlE
 
 infixr 5 :=>
 data a :=> b = a :=> b deriving (Eq, Show)
+
+class TagArguments t where
+  toType :: t -> [T.Text]
+  taExec :: t -> [Document] -> (Fragment -> HtmlE) -> Maybe HtmlE
+
+instance (s ~ String, h ~ Html, m ~ Either s h) => TagArguments (() -> m) where
+  toType _ = []
+  taExec r [] go = Just (r ())
+  taExec r _  _  = Nothing
+
+instance TagArguments r => TagArguments (Str -> r) where
+  toType _ = "_" : toType (undefined :: r)
+  taExec f ([TextFrag t]:rs) go = taExec (f (Str t)) rs go
+  taExec _ _                 _  = Nothing
+
+instance TagArguments r => TagArguments (Doc -> r) where
+  toType _ = "string" : toType (undefined :: r)
+  taExec f (doc:rs) go = taExec (f (Doc doc)) rs go
+  taExec _ []       _  = Nothing
+
+instance TagArguments r => TagArguments (H -> r) where
+  toType _ = "_" : toType (undefined :: r)
+  taExec f (doc:rs) go =
+    let h = fmap sequence_ (mapM go doc)
+    in case h of
+      Left err -> return (Left err)
+      Right h' -> taExec (f (H h')) rs go
+  taExec _ []       _  = Nothing
+
+instance (s ~ String, h ~ Html, m ~ Either s h) => TagArguments (Hs -> m) where
+  toType _ = ["..."]
+  taExec f docs go =
+    let h = fmap sequence_ (mapM go (concat docs))
+    in case h of
+      Left err -> return (Left err)
+      Right h' -> return (f (Hs h'))
+  taExec _ []       _  = Nothing
+
+data Tag' = forall t. TagArguments t => Tag'
+  { tgName :: T.Text
+  , tgFunc :: t
+  }
+
+newtype Str = Str T.Text deriving (Eq, Show)
+newtype Doc = Doc Document deriving (Eq, Show)
+newtype H = H Html
+newtype Hs = Hs Html
+newtype Docs = Docs [Document] deriving (Eq, Show)
+
+exec :: T.Text -> [Document] -> [Tag'] -> Either String Html
+exec name args (Tag' tag func:_)
+  | name == tag = case taExec func args undefined of
+      Nothing -> Left $ unwords [ "Tag"
+                                , T.unpack ('\\' `T.cons` name)
+                                , "expects argument structure"
+                                , T.unpack ('\\' `T.cons` name `T.append`
+                                            T.intercalate "|" (toType func))
+                                ]
+      Just x -> x
+exec name args (_:rs) = exec name args rs
+exec name args [] = Left $
+  "Error: no match for tag " ++ T.unpack name ++ "/" ++ show (length args)
 
 data Args t where
   EndArg      ::              Args ()
@@ -146,3 +210,52 @@ renderPara taglist ds = fmap (p . sequence_) (mapM go ds)
         exec name args (_:tags) = exec name args tags
         exec name args [] = Left $
           "Error: no match for tag " ++ T.unpack name ++ "/" ++ show (length args)
+
+-- The built-in set of tags (subject to change)
+basicTags' :: [Tag']
+basicTags' =
+  [ simpleTag' "em" em
+  , simpleTag' "strong" strong
+  , simpleTag' "li" li
+  , simpleTag' "h1" h1
+  , simpleTag' "h2" h2
+  , simpleTag' "p" (\ rs -> span ! class_ "para" $ rs)
+  , simpleTag' "blockquote" blockquote
+  , simpleTag' "tt" code
+  , simpleTag' "code" (pre . code)
+  , simpleTag' "ttcom" (\ rs -> span ! class_ "comment" $ rs)
+  , simpleTag' "ttkw"  (\ rs -> span ! class_ "keyword" $ rs)
+  , simpleTag' "ttcn"  (\ rs -> span ! class_ "constr" $ rs)
+  , simpleTag' "ttstr" (\ rs -> span ! class_ "string" $ rs)
+
+  , listTag' "ul" ul
+  , listTag' "ol" ol
+  , listTag' "center" (\ rs -> div ! class_ "center" $ rs)
+
+  , Tag' "br" (\ () -> return br)
+  , Tag' "comment" (\ () -> return "")
+  , Tag' "link" (\ (Str l) (H h) () ->
+                   let go h = a ! href (toValue l) $ h
+                   in return (go h))
+  , Tag' "img" (\ (Str l) (Str r) () ->
+                  return (img ! src (toValue l) ! alt (toValue r)))
+  ]
+
+simpleTag' :: T.Text -> (Markup -> Html) -> Tag'
+simpleTag' name tag = Tag'
+  { tgName = name
+  , tgFunc = \ (H h) () ->
+      return (tag h)
+  }
+
+listTag' :: T.Text -> (Markup -> Html) -> Tag'
+listTag' name tag = Tag'
+  { tgName = name
+  , tgFunc = \ (Hs hs) -> return (tag hs)
+  }
+
+-- render a single paragraph
+renderPara' :: [Tag'] -> Document -> Either String Html
+renderPara' taglist ds = fmap (p . sequence_) (mapM go ds)
+  where go (TextFrag ts) = Right (toMarkup ts)
+        go (TagFrag (Tag tx rs)) = exec tx rs taglist

@@ -4,7 +4,18 @@
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module Data.TeLML.Markup where
+module Data.TeLML.Markup
+( renderWith
+, render
+, basicTags
+, mkTag
+, simpleTag
+, listTag
+, H(..)
+, Hs(..)
+, Str(..)
+, TagDescription
+) where
 
 import Control.Monad (void)
 import Data.TeLML
@@ -58,18 +69,18 @@ instance TagArguments Html where
   taExec _ _  _ = Nothing
 
 instance TagArguments r => TagArguments (Str -> r) where
-  toType _ = "_" : toType (undefined :: r)
+  toType _ = "str" : toType (undefined :: r)
   taExec f ([TextFrag t]:rs) go = taExec (f (Str t)) rs go
   taExec _ _                 _  = Nothing
 
 instance TagArguments r => TagArguments (Maybe Str -> r) where
-  toType _ = "_" : toType (undefined :: r)
+  toType _ = "str?" : toType (undefined :: r)
   taExec f ([TextFrag t]:rs) go = taExec (f (Just (Str t))) rs go
   taExec f []                go = taExec (f Nothing) [] go
   taExec _ _                 _  = Nothing
 
 instance TagArguments r => TagArguments (H -> r) where
-  toType _ = "_" : toType (undefined :: r)
+  toType _ = "frag" : toType (undefined :: r)
   taExec f (doc:rs) go =
     let h = fmap sequence_ (mapM go doc)
     in case h of
@@ -80,15 +91,14 @@ instance TagArguments r => TagArguments (H -> r) where
 instance (h ~ Html) => TagArguments (Hs -> h) where
   toType _ = ["..."]
   taExec f docs go =
-    let h = fmap sequence_ (mapM go (concat docs))
+    let h = mapM (fmap sequence_ . mapM go) docs
     in case h of
       Left err -> return (Left err)
-      Right h' -> return (Right (f (Hs h')))
+      Right hs -> return (Right (f (Hs hs)))
 
-data TagDescription = forall t. TagArguments t => TagDescription
-  { tgName :: T.Text
-  , tgFunc :: t
-  }
+data TagDescription
+  = forall t. TagArguments t =>
+    TagDescription T.Text t
 
 -- | The 'Str' newtype will match a literal chunk of non-formatted,
 -- non-structured text.
@@ -99,7 +109,7 @@ newtype H = H { fromHtml :: Html }
 
 -- | The 'Hs' newtype will match a concatenated set of pre-rendered
 -- arguments
-newtype Hs = Hs { fromHtmlList :: Html }
+newtype Hs = Hs { fromHtmlList :: [Html] }
 
 mkTag :: TagArguments t => T.Text -> t -> TagDescription
 mkTag = TagDescription
@@ -123,21 +133,25 @@ basicTags =
 
   , listTag "ul" ul
   , listTag "ol" ol
+  , mkTag "list" (\ (Hs hs) -> ul $ mapM_ li hs)
   , listTag "center" (\ rs -> div ! class_ "center" $ rs)
 
   , TagDescription "br" br
   , TagDescription "comment" ("" :: Html)
   , TagDescription "link" (\ (Str l) (H h) -> a ! href (toValue l) $ h)
   , TagDescription "img" $ \ (Str l) altText -> case altText of
-      Just (Str r) -> img ! src (toValue l) ! alt (toValue r)
-      Nothing      -> img ! src (toValue l)
+      Just r  -> img ! src (toValue l) ! alt (toValue (fromStr r))
+      Nothing -> img ! src (toValue l)
   ]
 
 simpleTag :: T.Text -> (Markup -> Html) -> TagDescription
 simpleTag name tag = mkTag name (tag . fromHtml)
 
 listTag :: T.Text -> (Markup -> Html) -> TagDescription
-listTag name tag = mkTag name (\ (Hs hs) -> tag hs)
+listTag name tag = mkTag name (tag . mconcat . fromHtmlList)
+
+argsFor :: TagArguments t => t -> T.Text
+argsFor func = T.cons '{' (T.snoc (T.intercalate "|" (toType func)) '}')
 
 -- render a single paragraph
 renderPara :: [TagDescription] -> Document -> Either String Html
@@ -150,8 +164,7 @@ renderPara taglist ds = fmap (p . sequence_) (mapM go ds)
                 [ "Tag"
                 , T.unpack ('\\' `T.cons` name)
                 , "expects argument structure"
-                , T.unpack ('\\' `T.cons` name `T.append`
-                             T.intercalate "|" (toType func))
+                , T.unpack ('\\' `T.cons` name `T.append` argsFor func)
                 ]
               Just x -> x
         exec name args (_:rs) = exec name args rs

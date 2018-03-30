@@ -86,42 +86,96 @@ Error: no match for tag em/3
 ## Extended Usage
 
 The `renderWith` function takes a list of additional tags and their
-denotations (in the form of functions from `telml` fragments to
-`blaze-html` fragments.) This allows you to add new tags to the
-markup for particular purposes.
+denotations. This allows you to add new tags to the markup for
+particular purposes.
 
-For example, here we add a tag so that `\hello{...}` will render out to
+In order to define the meaning of a new tag, you can use the `mkTag`
+function, which takes the tag name as well as something which defines
+the meaning: usually a function of the arguments you want with certain
+redundant wrappers around the argument in order to guide the
+type-checker that in turn returns an `Html` fragment using the
+`blaze-html` library. For example, an argument-less tag like `br` can
+be defined as simply `mkTag "br" Text.Blaze.Html5.br`.
+
+For tags that take arguments, we can take advantage of the
+`TagArguments` type class in order to avoid fiddly argument-handling
+and manual errors. The `TagArguments` class will allow you to provide
+a function so long as all the arguments to the function are types that
+it knows about---mostly wrapper types defined by `telml-markup`. For
+example, the `H` type simply wraps already-rendered HTML, so if we
+want to write a tag like `em` that takes a single argument, we can
+write it like this:
+
+```
+import Data.TeLML.Markup
+import Text.Blaze.Html5 (em)
+
+-- \em{some argument}
+emTag :: TagDescription
+emTag = mkTag "em" (\ (H html) -> em html)
+```
+
+The `Hs` wrapper type wraps a variadic function, and can only be used
+as the final trailing argument, as it will match any number of
+arguments in a tag, rendering them all as HTML. We can define a list
+tag like this:
+
+```
+import Data.TeLML.Markup
+import Text.Blaze.Html5 (ul, li)
+
+-- \list{one|two|three}
+emTag :: TagDescription
+emTag = mkTag "list" (\ (Hs hs) -> ul (mapM_ li hs))
+```
+
+Sometimes we want a tag that has a concrete string value: for example,
+if we want a tag that allows us to write HTML `span` tags to add
+classes to elements, we would want the classes to be just strings and
+not already-rendered HTML strings. We can use the `Str` wrapper to
+make sure that an argument is treated as a raw string:
+
+```
+import Data.TeLML.Markup
+import Text.Blaze.Html5 (span, class_, toValue)
+
+-- \span{arg|class}
+spanTag :: TagDescription
+spanTag = mkTag "span" $ \ (H arg) (Str cls) ->
+    span ! class (toValue cls) $ arg
+```
+
+These tags have been straightforward, but arbitrary new tags with
+different argument structures can be added, and the underlying
+machinery will ensure that errors will be reported appropriately. The
+tags can also produce arbitrarily complicated structures: they do,
+after all, have the entirety of Haskell available to them! For
+example, here we add a tag so that `\hello{...}` will render out to
 the HTML string `<strong>Hello, ...!</strong>`:
 
 ~~~~{.haskell}
+{-# LANGUAGE OverloadedStrings #-}
 module Main where
 
-import Control.Monad ((>=>))
-import Data.TeLML (parse)
-import Data.TeLML.Markup (Renderer, renderWith)
-import System.Exit (exitFailure)
-import Text.Blaze.Html5 (strong, toMarkup)
-import Text.Blaze.Renderer.String (renderMarkup)
+import           Control.Monad ((>=>))
+import qualified Data.TeLML as TeLML
+import qualified Data.TeLML.Markup as TeLML
+import qualified System.Exit as Sys
+import qualified Text.Blaze.Html5 as Html
+import qualified Text.Blaze.Renderer.String as Html
 
-myTags :: [(String, Renderer)]
+myTags :: [TeLML.TagDescription]
 myTags =
-  [ ("hello", \ c -> case c of
-      (render, [name]) -> do
-        rName <- mapM render name
-        return $ strong $ do
-          toMarkup "Hello, "
-          sequence_ rName
-          toMarkup "!"
-      (_, args) -> Left ("Did not match hello/" ++ show (length args))
-    )
+  [ TeLML.mkTag "hello" $ \(TeLML.H name) ->
+    Html.strong ("Hello, " >> name >> "!")
   ]
 
 main :: IO ()
 main = do
   str <- getContents
-  case (parse >=> renderWith myTags) str of
-    Left err  -> putStrLn err >> exitFailure
-    Right doc -> putStrLn (renderMarkup doc)
+  case (TeLML.parse >=> TeLML.renderWith myTags) str of
+    Left err  -> putStrLn err >> Sys.exitFailure
+    Right doc -> putStrLn (Html.renderMarkup doc)
 ~~~~
 
 We can execute this to test it:
@@ -132,4 +186,24 @@ $ ./telml-markup-extended-test <<EOF
 > EOF
 <p>Now we can do this: <strong>Hello, friend!</strong>.
 </p>
+~~~~
+
+Providing the wrong argument list will give us an arity error:
+
+~~~~
+$ ./telml-markup-extended-test <<EOF
+> This does not use hello correctly: \hello{this|that}.
+> EOF
+Tag \hello expects argument structure \hello{frag}
+~~~~
+
+Additionally, for tags that specifically want strings intead of richer
+structures, we will get type errors:
+
+~~~~
+$ ./telml-markup-extended-test <<EOF
+> This tries to use emphasis in the link portion:
+> \link{\em{url}|\em{text}}.
+> EOF
+Tag \link expects argument structure \link{str|frag}
 ~~~~

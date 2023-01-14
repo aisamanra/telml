@@ -1,0 +1,24 @@
+name: telml-bin
+version: 0.1.0.0
+-- synopsis:
+-- description:
+license: BSD3
+author: Getty Ritter <tristero@infinitenegativeutility.com>
+maintainer: Getty Ritter <tristero@infinitenegativeutility.com>
+copyright: @2023 Getty Ritter
+-- category:
+build-type: Simple
+cabal-version: 1.14
+
+executable telml
+  hs-source-dirs: src
+  main-is: Main.hs
+  default-language: Haskell2010
+  default-extensions: ScopedTypeVariables
+  ghc-options: -Wall
+  build-depends: base >=4.7 && <5
+               , bytestring
+               , telml
+               , telml-markup
+               , text
+               , hslua-core

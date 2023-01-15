@@ -4,6 +4,7 @@
 module Main (main) where
 
 import qualified Control.Exception.Base as Exn
+import qualified Control.Monad as Monad
 import qualified Data.ByteString.Char8 as BS
 import qualified Data.TeLML as TeLML
 import qualified Data.Text as Text
@@ -29,13 +30,9 @@ main = do
     Left err -> do
       putStrLn err
       Sys.exitFailure
-  -- read the Lua source file, if provided
-  luaSource <- case optTagFile options of
-    Nothing -> return ""
-    Just f -> BS.readFile f
   -- run everything needed in the Lua context (i.e. evaluating the
   -- source and then using it to interpret tags)
-  result <- Lua.runEither (luaMain options luaSource telml)
+  result <- Lua.runEither (luaMain options telml)
   -- either print the result or print the error nicely
   case result of
     Right msg -> Text.putStr msg
@@ -51,8 +48,8 @@ type LuaM r = Lua.LuaE Error r
 
 -- | Evaluate the provided Lua source code and then use it to
 -- interpret the `TeLML.Document`.
-luaMain :: Options -> BS.ByteString -> TeLML.Document -> LuaM Text.Text
-luaMain opts luaSource doc = do
+luaMain :: Options -> TeLML.Document -> LuaM Text.Text
+luaMain opts doc = do
   -- load the basic libraries so we have access to stuff like `ipairs`
   Lua.openbase
   Lua.pop 1
@@ -61,15 +58,29 @@ luaMain opts luaSource doc = do
   Lua.newtable
   Lua.setglobal "telml"
 
-  -- evaluate the source file. (We don't care what it evaluates to.)
-  _ <- Lua.dostring luaSource
+  -- evaluate the source file.
+  case optTagFile opts of
+    Nothing -> return ()
+    Just f -> do
+      status <- Lua.dofile f
+      case status of
+        -- if it ran fine, then return
+        Lua.OK -> return ()
+        -- if it produced a runtime or syntax error, say so
+        Lua.ErrRun -> do
+          msg <- Lua.tostring (-1)
+          throw (LuaEvaluationError msg)
+        Lua.ErrSyntax -> do
+          msg <- Lua.tostring (-1)
+          throw (LuaEvaluationError msg)
+        _ ->
+          throw (BadEvaluationStatus status)
 
   -- make sure that the user didn't do something funky like redefine
   -- the global `telml` to a string.
   telml <- Lua.getglobal "telml"
-  if telml /= Lua.TypeTable
-    then throw (RedefinedTable telml)
-    else return ()
+  Monad.when (telml /= Lua.TypeTable) $
+    throw (RedefinedTable telml)
 
   -- walk over the document, evaluating as we go
   handleDoc opts doc
@@ -240,6 +251,27 @@ instance Exn.Exception RedefinedTable where
         ppType (rtType rt),
         " instead"
       ]
+
+-- | Whatever
+data BadEvaluationStatus = BadEvaluationStatus { besStatus :: Lua.Status } deriving (Show)
+
+instance Exn.Exception BadEvaluationStatus where
+  displayException bes = case besStatus bes of
+    Lua.Yield -> "Tag file yielded instead of exiting"
+    Lua.ErrMem -> "Tag file ran out of memory"
+    Lua.ErrErr -> "Tag file failed when running message handler"
+    Lua.ErrFile -> "Failed to open or read tag file"
+    rs -> error "[unreachable: should have handled status " ++ show rs ++" elsewhere]"
+
+-- | An error for when running the tag file failed
+data LuaEvaluationError = LuaEvaluationError { leeMessage :: Maybe BS.ByteString } deriving (Show)
+
+instance Exn.Exception LuaEvaluationError where
+  displayException (LuaEvaluationError (Just m)) =
+    "Error loading tags: " ++ BS.unpack m
+  displayException (LuaEvaluationError Nothing) =
+    "Error loading tags, but could not get error message"
+
 
 -- | Print a Lua type nicely (for error message purposes)
 ppType :: Lua.Type -> String

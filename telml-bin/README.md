@@ -4,6 +4,16 @@ The `telml` command-line program is the easiest way to use `telml` for your purp
 
 For documentation on the TeLML language itself, see [the data format documentation](https://github.com/aisamanra/telml/blob/master/telml/README.md).
 
+## Installing
+
+Right now the only way to get `telml` is from source. To build and install it, use `cabal install`. It also requires you to have a copy of Lua version 54 on your system.
+
+```
+$ git clone https://github.com/aisamanra/telml.git
+$ cd telml
+$ cabal install telml-bin
+```
+
 ## Simple usage
 
 The usual use is as follows:

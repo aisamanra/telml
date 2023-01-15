@@ -98,7 +98,10 @@ handleTag opts (TeLML.Tag n ps) = do
   case typ of
     Lua.TypeNil
       -- Defer to the standard tags by default
-      | optUseDefaultTags opts -> standardTags n ps'
+      | optUseDefaultTags opts -> do
+          -- make sure we get that `nil` off the stack!
+          Lua.pop 1
+          standardTags n ps'
       -- ...but if the user opted out, then throw errors
       | otherwise -> throw (NoSuchTag n)
     -- if it's a function, then we can call it!

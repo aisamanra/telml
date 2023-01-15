@@ -233,6 +233,7 @@ handleFrag (TeLML.TagFrag tag) = handleTag tag
 
 handleTag :: TeLML.Tag -> LuaM Text.Text
 handleTag (TeLML.Tag n ps) = do
+  -- evaluate the "arguments" first
   ps' <- mapM handleDoc ps
   Lua.pushstring (Text.encodeUtf8 n)
   typ <- Lua.gettable 1
@@ -247,5 +248,6 @@ handleTag (TeLML.Tag n ps) = do
           actualtyp <- Lua.ltype 2
           throw (NotAString n actualtyp)
         Just r -> do
+          Lua.pop 1
           return (Text.decodeUtf8 r)
     _ -> throw (NotAFunction n typ)

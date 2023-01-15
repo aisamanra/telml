@@ -12,6 +12,7 @@ import qualified Data.Text.IO as Text
 import qualified HsLua.Core as Lua
 import qualified System.Console.GetOpt as Opt
 import qualified System.Environment as Sys
+import qualified System.Exit as Sys
 
 -- | The main driver
 main :: IO ()
@@ -23,9 +24,11 @@ main = do
     Nothing -> getContents
     Just f -> readFile f
   -- attempt to parse it
-  let telml = case TeLML.parse telmlSource of
-        Right str -> str
-        Left err -> error err
+  telml <- case TeLML.parse telmlSource of
+    Right str -> return str
+    Left err -> do
+      putStrLn err
+      Sys.exitFailure
   -- read the Lua source file, if provided
   luaSource <- case optTagFile options of
     Nothing -> return ""
@@ -36,7 +39,9 @@ main = do
   -- either print the result or print the error nicely
   case result of
     Right msg -> Text.putStr msg
-    Left err -> putStrLn (Exn.displayException err)
+    Left err -> do
+      putStrLn (Exn.displayException err)
+      Sys.exitFailure
 
 -- * Lua stuff
 
@@ -123,8 +128,7 @@ handleTag opts (TeLML.Tag n ps) = do
 
 -- * Errors and error-handling
 
--- We wrap the usual LuaHS error type in our own
-
+-- | We wrap the usual LuaHS error type in our own
 data Error
   = LuaError Lua.Exception
   | TeLMLError Exn.SomeException
@@ -307,7 +311,7 @@ optionDescriptions =
     Opt.Option
       ['t']
       ["tags"]
-      (Opt.ReqArg (\f o -> o {optTagFile = Just f}) "[file]")
+      (Opt.ReqArg (\f o -> o {optTagFile = Just f}) "[tagfile.lua]")
       "The file of tag definitions to use"
   ]
 
@@ -325,5 +329,7 @@ parseOpts = do
       return (foldl (flip id) def flags)
     (flags, [input], []) ->
       return (foldl (flip id) def flags) {optInputFile = Just input}
-    (_, _, errors) ->
-      error (unlines errors)
+    (_, _, errors) -> do
+      putStr (unlines errors)
+      putStrLn (Opt.usageInfo "USAGE: telml [input.telml] [-n] [-t tagfile.lua]" optionDescriptions)
+      Sys.exitFailure

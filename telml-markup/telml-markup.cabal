@@ -10,7 +10,7 @@ synopsis:               A simple, extensible, TeX-like markup language.
 description:            A simple, extensible, TeX-like markup language.
 cabal-version:          >= 1.10
 build-type:             Simple
-extra-source-files:     README.md, ChangeLog.md
+extra-source-files:     README.md
 
 executable telml2html
   default-language: Haskell2010

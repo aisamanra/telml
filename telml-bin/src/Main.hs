@@ -263,6 +263,7 @@ standardTags n ps =
     "strong" -> simpleTag n ps (\r -> "<strong>" <> r <> "</strong>")
     "h1" -> simpleTag n ps (\r -> "<h1>" <> r <> "</h1>")
     "h2" -> simpleTag n ps (\r -> "<h2>" <> r <> "</h2>")
+    "h3" -> simpleTag n ps (\r -> "<h3>" <> r <> "</h3>")
     "p" -> simpleTag n ps (\r -> "<p class=\"para\">" <> r <> "</p>")
     "blockquote" -> simpleTag n ps (\r -> "<blockquote>" <> r <> "</blockquote>")
     "tt" -> simpleTag n ps (\r -> "<code>" <> r <> "</code>")

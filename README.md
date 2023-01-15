@@ -50,6 +50,10 @@ tags as HTML, and additionally lets you add new custom tags to the
 mix. That library is less well-specified, and could probably change
 radically if I decide I want the semantics of tags to change.
 
+The `telml` binary (implemented in the `telml-bin` folder) allows you
+to easily define your own tags using the Lua programming language. See
+[the documentation there](https://github.com/aisamanra/telml/blob/master/telml-bin/README.md) for more details.
+
 ## Frequently Asked Questions
 
 Nobody has asked me these, but I assume that if someone wanted to ask

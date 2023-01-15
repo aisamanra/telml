@@ -107,7 +107,7 @@ luaMain luaSource doc = do
   _ <- Lua.dostring luaSource
   telml <- Lua.getglobal "telml"
   if telml /= Lua.TypeTable
-    then Lua.liftIO (putStrLn "wrong type")
+    then throw (RedefinedTable telml)
     else return ()
   handleDoc doc
 
@@ -148,7 +148,6 @@ instance Exn.Exception NotAFunction where
         ppType (nafActual naf),
         " instead"
       ]
-    where
 
 data NotAString = NotAString
   {nasName :: Text.Text, nasActual :: Lua.Type}
@@ -163,7 +162,18 @@ instance Exn.Exception NotAString where
         ppType (nasActual nas),
         " instead"
       ]
-    where
+
+data RedefinedTable = RedefinedTable
+  {rtType :: Lua.Type}
+  deriving (Show)
+
+instance Exn.Exception RedefinedTable where
+  displayException rt =
+    concat
+      [ "Configuration file redefined `telml` to non-table; found ",
+        ppType (rtType rt),
+        " instead"
+      ]
 
 ppType :: Lua.Type -> String
 ppType Lua.TypeNil = "nil"

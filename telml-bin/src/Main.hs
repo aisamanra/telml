@@ -145,20 +145,37 @@ instance Exn.Exception NotAFunction where
       [ "Lua definition of `telml.",
         Text.unpack (nafName naf),
         "` not a function, found ",
-        go (nafActual naf),
+        ppType (nafActual naf),
         " instead"
       ]
     where
-      go Lua.TypeNil = "nil"
-      go Lua.TypeBoolean = "boolean"
-      go Lua.TypeLightUserdata = "userdata (light)"
-      go Lua.TypeNumber = "number"
-      go Lua.TypeString = "string"
-      go Lua.TypeTable = "table"
-      go Lua.TypeFunction = "function"
-      go Lua.TypeUserdata = "userdata"
-      go Lua.TypeThread = "thread"
-      go Lua.TypeNone = "something unspeakable"
+
+data NotAString = NotAString
+  {nasName :: Text.Text, nasActual :: Lua.Type}
+  deriving (Show)
+
+instance Exn.Exception NotAString where
+  displayException nas =
+    concat
+      [ "Result of calling `telml.",
+        Text.unpack (nasName nas),
+        "` not a string, found ",
+        ppType (nasActual nas),
+        " instead"
+      ]
+    where
+
+ppType :: Lua.Type -> String
+ppType Lua.TypeNil = "nil"
+ppType Lua.TypeBoolean = "boolean"
+ppType Lua.TypeLightUserdata = "userdata (light)"
+ppType Lua.TypeNumber = "number"
+ppType Lua.TypeString = "string"
+ppType Lua.TypeTable = "table"
+ppType Lua.TypeFunction = "function"
+ppType Lua.TypeUserdata = "userdata"
+ppType Lua.TypeThread = "thread"
+ppType Lua.TypeNone = "something unspeakable"
 
 standardTags :: Text.Text -> [Text.Text] -> LuaM Text.Text
 standardTags n ps =
@@ -195,7 +212,7 @@ handleTag (TeLML.Tag n ps) = do
       case result of
         Nothing -> do
           actualtyp <- Lua.ltype 2
-          error ("expected string, got" ++ show actualtyp)
+          throw (NotAString n actualtyp)
         Just r -> do
           return (Text.decodeUtf8 r)
     _ -> throw (NotAFunction n typ)

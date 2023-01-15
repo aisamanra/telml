@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Main where
+module Main (main) where
 
 import qualified Control.Exception.Base as Exn
 import qualified Data.ByteString.Char8 as BS
@@ -189,17 +189,40 @@ ppType Lua.TypeNone = "something unspeakable"
 
 standardTags :: Text.Text -> [Text.Text] -> LuaM Text.Text
 standardTags n ps =
-  case (n, ps) of
+  case n of
     -- \em to produce italics
-    ("em", [r]) -> pure ("<em>" <> r <> "</em>")
-    ("em", _) -> throw (BuiltinArityMismatch 1 (length ps) n)
-    -- \strong to produce bolding
-    ("strong", [r]) -> pure ("<strong>" <> r <> "</strong>")
-    ("strong", _) -> throw (BuiltinArityMismatch 1 (length ps) n)
-    -- \li to produce list items
-    ("li", [r]) -> pure ("<li>" <> r <> "</li>")
-    ("li", _) -> throw (BuiltinArityMismatch 1 (length ps) n)
+    "em" -> simpleTag n ps (\r -> "<em>" <> r <> "</em>")
+    "strong" -> simpleTag n ps (\r -> "<strong>" <> r <> "</strong>")
+    "h1" -> simpleTag n ps (\r -> "<h1>" <> r <> "</h1>")
+    "h2" -> simpleTag n ps (\r -> "<h2>" <> r <> "</h2>")
+    "p" -> simpleTag n ps (\r -> "<p class=\"para\">" <> r <> "</p>")
+    "blockquote" -> simpleTag n ps (\r -> "<blockquote>" <> r <> "</blockquote>")
+    "tt" -> simpleTag n ps (\r -> "<code>" <> r <> "</code>")
+    "code" -> simpleTag n ps (\r -> "<pre><code>" <> r <> "</code></pre>")
+    "center" -> simpleTag n ps (\r -> "<div class=\"center\">" <> r <> "</div>")
+    -- some of the variadic ones
+    "ul" ->
+      pure ("<ul>" <> mconcat ["<li>" <> p <> "</li>" | p <- ps] <> "</ul>")
+    "ol" ->
+      pure ("<ol>" <> mconcat ["<li>" <> p <> "</li>" | p <- ps] <> "</ol>")
+    "br" ->
+      pure "<br/>"
+    "comment" -> pure ""
+    "link" -> case ps of
+      [address, text] ->
+        pure ("<a href=\"" <> address <> "\">" <> text <> "</a>")
+      _ -> throw (BuiltinArityMismatch 2 (length ps) n)
+    "img" -> case ps of
+      [address] ->
+        pure ("<img src=\"" <> address <> "\">")
+      [address, altText] ->
+        pure ("<img src=\"" <> address <> "\" alt=\"" <> altText <> "\">")
+      _ -> throw (BuiltinArityMismatch 1 (length ps) n)
     _ -> throw (NoSuchTag n)
+
+simpleTag :: Text.Text -> [Text.Text] -> (Text.Text -> Text.Text) -> LuaM Text.Text
+simpleTag _ [item] result = pure (result item)
+simpleTag name items _ = throw (BuiltinArityMismatch 1 (length items) name)
 
 handleDoc :: TeLML.Document -> LuaM Text.Text
 handleDoc = fmap mconcat . sequence . map handleFrag

@@ -1,15 +1,17 @@
 name:                telml-parse
 version:             0.1.0.0
-synopsis:            A lightweight TeX-like markup format.
-description:         A lightweight TeX-like markup format.
+synopsis:            A processing abstraction for `telml`.
+description:         An abstraction for interpreting and
+                     processing `telml` documents.
 license:             BSD3
 license-file:        LICENSE
-author:              Getty Ritter <gettylefou@gmail.com>
-maintainer:          Getty Ritter <gettylefou@gmail.com>
-copyright:           ©2018 Getty Ritter
+author:              Getty Ritter <telml@infinitenegativeutility.com>
+maintainer:          Getty Ritter <telml@infinitenegativeutility.com>
+copyright:           ©2023 Getty Ritter
 category:            Data
 build-type:          Simple
-cabal-version:       >=1.10
+cabal-version:       1.14
+tested-with:         GHC == 8.8.4, GHC == 8.10.7, GHC == 9.0.2, GHC == 9.2.4, GHC == 9.4.2
 
 library
   exposed-modules:     Data.TeLML.Parse

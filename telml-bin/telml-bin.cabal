@@ -9,6 +9,7 @@ copyright: @2023 Getty Ritter
 -- category:
 build-type: Simple
 cabal-version: 1.14
+tested-with:            GHC == 8.8.4, GHC == 8.10.7, GHC == 9.0.2, GHC == 9.2.4, GHC == 9.4.2
 
 executable telml
   hs-source-dirs: src

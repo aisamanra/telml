@@ -1,7 +1,8 @@
 name: telml-bin
 version: 0.1.0.0
--- synopsis:
--- description:
+synopsis: The command-line `telml` driver
+description: A command-line tool for compiling `telml`
+             documents.
 license: BSD3
 author: Getty Ritter <tristero@infinitenegativeutility.com>
 maintainer: Getty Ritter <tristero@infinitenegativeutility.com>

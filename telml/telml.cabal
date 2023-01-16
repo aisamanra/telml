@@ -1,12 +1,14 @@
 name:                telml
 version:             0.1.0.0
 synopsis:            A lightweight TeX-like markup format.
-description:         A lightweight TeX-like markup format.
+description:         A lightweight TeX-like markup format,
+                     including a barebones parser for the
+                     document format.
 license:             BSD3
 license-file:        LICENSE
-author:              Getty Ritter <gettylefou@gmail.com>
-maintainer:          Getty Ritter <gettylefou@gmail.com>
-copyright:           ©2015 Getty Ritter
+author:              Getty Ritter <telml@infinitenegativeutility.com>
+maintainer:          Getty Ritter <telml@infinitenegativeutility.com>
+copyright:           ©2023 Getty Ritter
 category:            Data
 build-type:          Simple
 cabal-version:       >=1.10

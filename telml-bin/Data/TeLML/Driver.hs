@@ -41,7 +41,7 @@ mainWithOpts options = do
       Sys.exitFailure
   -- run everything needed in the Lua context (i.e. evaluating the
   -- source and then using it to interpret tags)
-  Lua.runEither (luaMain options telml)
+  Lua.runEither (luaMain options (TeLML.splitBlocks telml))
 
 -- * Lua stuff
 
@@ -51,8 +51,8 @@ type LuaM r = Lua.LuaE Error r
 
 -- | Evaluate the provided Lua source code and then use it to
 -- interpret the `TeLML.Document`.
-luaMain :: Options -> TeLML.Document -> LuaM Text.Text
-luaMain opts doc = do
+luaMain :: Options -> [TeLML.Document] -> LuaM Text.Text
+luaMain opts docs = do
   -- load the basic libraries so we have access to stuff like `ipairs`
   Lua.openbase
   Lua.pop 1
@@ -88,11 +88,33 @@ luaMain opts doc = do
     throw (RedefinedTable telml)
 
   -- walk over the document, evaluating as we go
-  handleDoc opts doc
+  handleTopLevel opts docs
 
--- | Convert a `TeLML.Document` into a piece of `Text`
 handleDoc :: Options -> TeLML.Document -> LuaM Text.Text
 handleDoc opts = fmap mconcat . sequence . map (handleFrag opts)
+
+-- | Convert a `TeLML.Document` into a piece of `Text`
+handleTopLevel :: Options -> [TeLML.Document] -> LuaM Text.Text
+handleTopLevel opts texts = do
+  fragments <- mapM (handleDoc opts) texts
+
+  -- see if we have `telml.document` defined
+  Lua.pushstring "document"
+  typ <- Lua.gettable 1
+  case typ of
+    Lua.TypeNil -> return (mconcat ["<p>" <> f <> "</p>" | f <- fragments])
+    Lua.TypeFunction -> do
+      mapM_ (Lua.pushstring . Text.encodeUtf8) fragments
+      Lua.call (Lua.NumArgs (fromIntegral (length fragments))) 1
+      result <- Lua.tostring 2
+      case result of
+        Nothing -> do
+          actualtyp <- Lua.ltype 2
+          throw (NotAString "document" actualtyp)
+        Just r -> do
+          Lua.pop 1
+          return (Text.decodeUtf8 r)
+    _ -> throw (NotAFunction "document" typ)
 
 -- | Convert a `TeLML.Fragment` into a piece of `Text` with the
 -- relevant tag evaluation

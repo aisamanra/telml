@@ -40,4 +40,22 @@ main = hspec $ do
           { program = "\\em{Hello!}"
           }
     result `shouldBe` "<em>Hello!</em>"
-  return ()
+
+  it "concats when no `document` is defined" $ do
+    Right result <-
+      run
+        test
+          { program = "One!\n\nTwo!\n"
+          }
+    result `shouldBe` "One!\n\nTwo!\n"
+
+  it "uses `document` if it is defined" $ do
+    Right result <-
+      run
+        test
+          { program = "One!\n\nTwo!\n"
+          , tags = "function telml.document(...) \
+                   \  return \"whee\"\n \
+                   \end\n"
+          }
+    result `shouldBe` "One!\n\nTwo!\n"

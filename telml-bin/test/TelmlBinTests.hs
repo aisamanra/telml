@@ -53,9 +53,10 @@ main = hspec $ do
     Right result <-
       run
         test
-          { program = "One!\n\nTwo!\n"
-          , tags = "function telml.document(...) \
-                   \  return \"whee\"\n \
-                   \end\n"
+          { program = "One!\n\nTwo!\n",
+            tags =
+              "function telml.document(...) \
+              \  return \"whee\"\n \
+              \end\n"
           }
     result `shouldBe` "One!\n\nTwo!\n"

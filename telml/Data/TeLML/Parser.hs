@@ -3,7 +3,7 @@
 module Data.TeLML.Parser (Fragment (..), Tag (..), Document, parse, splitBlocks) where
 
 import Data.Char (isAlpha, isAlphaNum, isSpace)
-import Data.List.NonEmpty (NonEmpty(..), (<|))
+import Data.List.NonEmpty (NonEmpty (..), (<|))
 import qualified Data.List.NonEmpty as NE
 import Data.TeLML.Type
 import qualified Data.Text as T
@@ -128,19 +128,20 @@ parse str = case pFragments str of
 -- | Take a `Document` and split it into a sequence of documents by breaking apart on newlines
 splitBlocks :: Document -> [Document]
 splitBlocks = splitDocument ([] :| [])
-  where doubleNewline = T.pack "\n\n"
-        splitDocument :: NonEmpty Document -> Document -> [Document]
-        splitDocument rs [] = reverse (NE.toList (fmap reverse rs))
-        splitDocument (h :| rs) (TagFrag t:ts) =
-          splitDocument ((TagFrag t : h) :| rs) ts
-        splitDocument (h :| rs) (TextFrag t:ts)
-          | not (doubleNewline `T.isInfixOf` t) =
-            splitDocument ((TextFrag t : h) :| rs) ts
-          | otherwise =
-            splitDocument (addLines (T.splitOn doubleNewline t) (h :| rs)) ts
-        addLines :: [T.Text] -> NonEmpty Document -> NonEmpty Document
-        addLines [] rs = rs
-        addLines [t] (h :| rs) =
-          ((TextFrag t : h) :| rs)
-        addLines (t:ts) (h :| rs) =
-          addLines ts ([] :| ((TextFrag t : h) : rs))
+  where
+    doubleNewline = T.pack "\n\n"
+    splitDocument :: NonEmpty Document -> Document -> [Document]
+    splitDocument rs [] = reverse (NE.toList (fmap reverse rs))
+    splitDocument (h :| rs) (TagFrag t : ts) =
+      splitDocument ((TagFrag t : h) :| rs) ts
+    splitDocument (h :| rs) (TextFrag t : ts)
+      | not (doubleNewline `T.isInfixOf` t) =
+        splitDocument ((TextFrag t : h) :| rs) ts
+      | otherwise =
+        splitDocument (addLines (T.splitOn doubleNewline t) (h :| rs)) ts
+    addLines :: [T.Text] -> NonEmpty Document -> NonEmpty Document
+    addLines [] rs = rs
+    addLines [t] (h :| rs) =
+      ((TextFrag t : h) :| rs)
+    addLines (t : ts) (h :| rs) =
+      addLines ts ([] :| ((TextFrag t : h) : rs))

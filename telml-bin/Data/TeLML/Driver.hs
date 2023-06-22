@@ -102,7 +102,7 @@ handleTopLevel opts texts = do
   Lua.pushstring "document"
   typ <- Lua.gettable 1
   case typ of
-    Lua.TypeNil -> return (mconcat ["<p>" <> f <> "</p>" | f <- fragments])
+    Lua.TypeNil -> return (mconcat ["<p>" <> f <> "</p>\n" | f <- fragments])
     Lua.TypeFunction -> do
       mapM_ (Lua.pushstring . Text.encodeUtf8) fragments
       Lua.call (Lua.NumArgs (fromIntegral (length fragments))) 1

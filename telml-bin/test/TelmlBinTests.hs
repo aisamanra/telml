@@ -39,15 +39,15 @@ main = hspec $ do
         test
           { program = "\\em{Hello!}"
           }
-    result `shouldBe` "<em>Hello!</em>"
+    result `shouldBe` "<p><em>Hello!</em></p>\n"
 
-  it "concats when no `document` is defined" $ do
+  it "uses <p> when no `document` is defined" $ do
     Right result <-
       run
         test
           { program = "One!\n\nTwo!\n"
           }
-    result `shouldBe` "One!\n\nTwo!\n"
+    result `shouldBe` "<p>One!</p>\n<p>Two!\n</p>\n"
 
   it "uses `document` if it is defined" $ do
     Right result <-
@@ -55,8 +55,12 @@ main = hspec $ do
         test
           { program = "One!\n\nTwo!\n",
             tags =
-              "function telml.document(...) \
-              \  return \"whee\"\n \
+              "function telml.document(...)\n\
+              \  local result = ''\n\
+              \  for idx, arg in ipairs({...}) do\n\
+              \    result = result .. '- ' .. arg .. '\\n'\n\
+              \  end\n\
+              \  return result\n\
               \end\n"
           }
-    result `shouldBe` "One!\n\nTwo!\n"
+    result `shouldBe` "- One!\n- Two!\n\n"
